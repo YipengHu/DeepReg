@@ -21,9 +21,8 @@ num_pat = len(h5_image_us)
 print(num_pat)
 
 num_labels = h5_label_us['/num_labels'][0]
-if any(num_labels != h5_label_mr['/num_labels'][0]) | any(num_labels != h5_label_us['/num_important'][0]) | any(num_labels != h5_label_mr['/num_important'][0]):
+if any(num_labels != h5_label_mr['/num_labels'][0]) | any(num_labels != h5_label_us['/num_important'][0]):
     raise("numbers of labels are not compatible.")
-
 
 #commit to write
 if os.path.exists(SAVE_PATH):
@@ -70,7 +69,6 @@ for ii, idx in enumerate(pat_indices):
         fid.create_dataset('/obs%03d' % idx, data[tn].shape, dtype=data[tn].dtype, data=data[tn])
         fid.flush()
         fid.close()
-    
-    print(ii,fold_path,idx)
+    # print(ii,fold_path,idx)
 
 print('Done.')
