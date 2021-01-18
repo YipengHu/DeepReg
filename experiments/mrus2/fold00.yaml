@@ -39,7 +39,7 @@ train:
       name: "dice"
       scales: [0, 1, 2, 4, 8, 16, 32]
     regularization:
-      weight: 0.5 # weight of regularization loss
+      weight: 1 # weight of regularization loss
       name: "bending" # options include "bending", "gradient"
 
   # define the optimizer
