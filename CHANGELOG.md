@@ -6,10 +6,52 @@ to make them as straightforward as possible.
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project
 adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.1.1] - In Progress
+## [1.0.0-rc1] - In Progress
+
+Release comment: refactoring of models means that old checkpoint files are no longer
+compatible with the updates.
 
 ### Added
 
+- Added example for using custom loss.
+- Added tests on Mac OS.
+- Added tests for python 3.6 and 3.7.
+- Added support to custom layer channels in U-Net.
+- Added support to multiple loss functions for each loss type: "image", "label" and
+  "regularization".
+- Added LNCC computation using separable 1-D filters for all kernels available
+
+### Changed
+
+- Renamed `neg_weight` to `background_weight`.
+- Renamed `log_dir` to `exp_name` and `log_root` to `log_dir` respectively.
+- Uniformed local-net, global-net, u-net under a single u-net structure.
+- Simplified custom layer definitions.
+- Removed multiple unnecessary custom layers and use tf.keras.layers whenever possible.
+- Refactored BSplines interpolation independently of the backbone network and available
+  only for DDF and DVF models.
+
+### Fixed
+
+- Removed loss weight checks to be more robust.
+- Fixed import error under python 3.6.
+- Fixed the residual module in local net architecture, compatible for previous
+  checkpoints.
+- Broken link in README to seminar video.
+
+## [0.1.2] - 2021-01-31
+
+Release comment: This is mainly a bugfix release, although some of the tasks in
+1.0.0-rc1 have been included in this release, with or without public-facing
+accessibility (see details below).
+
+### Added
+
+- Added global NCC loss
+- Added the docs on registry for backbone models.
+- Added backward compatible config parser.
+- Added tests so that test coverage is 100%.
+- Added config file docs with details on how new config works.
 - Added DDF data augmentation.
 - Added the registry for backbone models and losses.
 - Added pylint with partial check (C0103,C0301,R1725,W0107,W9012,W9015) to CI.
@@ -22,6 +64,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Refactored optimizer configuration.
 - Refactored affine transform data augmentation.
 - Modified the implementation of resampler to support zero boundary condition.
 - Refactored loss functions into classes.
@@ -37,6 +80,7 @@ adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Fixed several dead links in the documentation.
 - Fixed a bug due to typo when image loss weight is zero, label loss is not applied.
 - Fixed warp CLI tool by saving outputs in Nifti1 format.
 - Fixed optimiser storage and loading from checkpoints.

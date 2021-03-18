@@ -33,29 +33,28 @@ print(
     "The prediction can also be launched using the following command.\n"
     "deepreg_predict --gpu '' "
     f"--config_path demos/{name}/{name}.yaml "
-    f"--ckpt_path demos/{name}/dataset/pretrained/unpaired_ct_lung_1/ckpt-4000 "
-    f"--log_root demos/{name} "
-    "--log_dir logs_predict "
+    f"--ckpt_path demos/{name}/dataset/pretrained/ckpt-5000 "
+    f"--log_dir demos/{name} "
+    "--exp_name logs_predict "
     "--save_png --mode test\n"
     "=========================================================\n"
     "\n\n\n\n\n"
 )
 
-log_root = f"demos/{name}"
-log_dir = "logs_predict/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-ckpt_path = f"{log_root}/dataset/pretrained/unpaired_ct_lung_1/ckpt-4000"
-config_path = [f"{log_root}/{name}.yaml"]
+log_dir = f"demos/{name}"
+exp_name = "logs_predict/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+ckpt_path = f"{log_dir}/dataset/pretrained/ckpt-5000"
+config_path = [f"{log_dir}/{name}.yaml"]
 if args.test:
     config_path.append("config/test/demo_unpaired_grouped.yaml")
 
 predict(
     gpu="0",
-    gpu_allow_growth=False,
+    gpu_allow_growth=True,
     ckpt_path=ckpt_path,
     mode="test",
     batch_size=1,
-    log_root=log_root,
     log_dir=log_dir,
-    sample_label="all",
+    exp_name=exp_name,
     config_path=config_path,
 )

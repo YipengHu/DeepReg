@@ -5,15 +5,18 @@ Image data can be labeled or unlabeled.
 Read https://deepreg.readthedocs.io/en/latest/api/loader.html#module-deepreg.dataset.loader.grouped_loader for more details.
 """
 import random
-from typing import List
+from copy import deepcopy
+from typing import List, Optional, Tuple, Union
 
 from deepreg.dataset.loader.interface import (
     AbstractUnpairedDataLoader,
     GeneratorDataLoader,
 )
 from deepreg.dataset.util import check_difference_between_two_lists
+from deepreg.registry import REGISTRY
 
 
+@REGISTRY.register_data_loader(name="grouped")
 class GroupedDataLoader(AbstractUnpairedDataLoader, GeneratorDataLoader):
     """
     Load grouped data.
@@ -28,12 +31,12 @@ class GroupedDataLoader(AbstractUnpairedDataLoader, GeneratorDataLoader):
         file_loader,
         data_dir_paths: List[str],
         labeled: bool,
-        sample_label: (str, None),
+        sample_label: Optional[str],
         intra_group_prob: float,
         intra_group_option: str,
         sample_image_in_group: bool,
-        seed: (int, None),
-        image_shape: (list, tuple),
+        seed: Optional[int],
+        image_shape: Union[Tuple[int, ...], List[int]],
     ):
         """
         :param file_loader: a subclass of FileLoader
@@ -118,7 +121,7 @@ class GroupedDataLoader(AbstractUnpairedDataLoader, GeneratorDataLoader):
             else:  # intra group
                 self.sample_indices = self.get_intra_sample_indices()
 
-            self._num_samples = len(self.sample_indices)
+            self._num_samples = len(self.sample_indices)  # type: ignore
 
     def validate_data_files(self):
         """If the data are labeled, verify image loader and label loader have the same files."""
@@ -221,7 +224,9 @@ class GroupedDataLoader(AbstractUnpairedDataLoader, GeneratorDataLoader):
                     num_images_in_group = self.num_images_per_group[group_index]
                     if num_images_in_group < 2:
                         # skip groups having <2 images
-                        continue
+                        # currently have not encountered
+                        continue  # pragma: no cover
+
                     image_index1, image_index2 = rnd.sample(
                         [i for i in range(num_images_in_group)], 2
                     )  # sample two unique indices
@@ -264,7 +269,7 @@ class GroupedDataLoader(AbstractUnpairedDataLoader, GeneratorDataLoader):
         else:
             # sample indices are pre-calculated
             assert self.sample_indices is not None
-            sample_indices = self.sample_indices.copy()
+            sample_indices = deepcopy(self.sample_indices)
             rnd.shuffle(sample_indices)  # shuffle in place
             for sample_index in sample_indices:
                 group_index1, image_index1, group_index2, image_index2 = sample_index

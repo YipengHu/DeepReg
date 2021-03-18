@@ -2,16 +2,18 @@
 Load h5 files and associated information.
 """
 import os
-from typing import List
+from typing import List, Tuple, Union
 
 import h5py
 import numpy as np
 
 from deepreg.dataset.loader.interface import FileLoader
+from deepreg.registry import REGISTRY
 
 DATA_KEY_FORMAT = "group-{}-{}"
 
 
+@REGISTRY.register_file_loader(name="h5")
 class H5FileLoader(FileLoader):
     """Generalized loader for h5 files."""
 
@@ -45,7 +47,7 @@ class H5FileLoader(FileLoader):
           - if not grouped, a split is (dir_path, data_key) such that
             data = h5_files[dir_path][data_key]
         """
-        h5_files = dict()
+        h5_files = {}
         data_path_splits = []
         for dir_path in self.dir_paths:
             h5_file_path = os.path.join(dir_path, self.name + ".h5")
@@ -84,7 +86,7 @@ class H5FileLoader(FileLoader):
         data_index = group_struct[group_index][in_group_data_index].
         """
         # group_struct_dict[group_id] = list of data_index
-        group_struct_dict = dict()
+        group_struct_dict = {}
         for data_index, split in enumerate(self.data_path_splits):
             group_id = split[:2]
             if group_id not in group_struct_dict.keys():
@@ -96,7 +98,7 @@ class H5FileLoader(FileLoader):
             group_struct.append(group_struct_dict[k])
         self.group_struct = group_struct
 
-    def get_data(self, index: (int, tuple)) -> np.ndarray:
+    def get_data(self, index: Union[int, Tuple[int, ...]]) -> np.ndarray:
         """
         Get one data array by specifying an index
 
@@ -107,6 +109,7 @@ class H5FileLoader(FileLoader):
             (group_index, in_group_data_index)
         :returns arr: the data array at the specified index
         """
+        assert self.data_path_splits is not None
         if isinstance(index, int):  # paired or unpaired
             assert not self.grouped
             assert 0 <= index
@@ -127,10 +130,11 @@ class H5FileLoader(FileLoader):
         arr = np.asarray(self.h5_files[dir_path][data_key], dtype=np.float32)
         if len(arr.shape) == 4 and arr.shape[3] == 1:
             # for labels, if there's only one label, remove the last dimension
-            arr = arr[:, :, :, 0]
+            # currently have not encountered
+            arr = arr[:, :, :, 0]  # pragma: no cover
         return arr
 
-    def get_data_ids(self) -> List[str]:
+    def get_data_ids(self) -> List:
         """
         Get the unique IDs of data in this data set to
         verify consistency between
@@ -139,13 +143,13 @@ class H5FileLoader(FileLoader):
         :return: data_path_splits as the data can be identified
             using dir_path and data_key
         """
-        return self.data_path_splits
+        return self.data_path_splits  # type: ignore
 
     def get_num_images(self) -> int:
         """
         :return: int, number of images in this data set
         """
-        return len(self.data_path_splits)
+        return len(self.data_path_splits)  # type: ignore
 
     def close(self):
         """Close opened h5 file handles."""

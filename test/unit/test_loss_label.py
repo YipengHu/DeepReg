@@ -11,25 +11,7 @@ import numpy as np
 import pytest
 import tensorflow as tf
 
-import deepreg.model.loss.label as label
-
-
-@pytest.mark.parametrize("sigma", [1, 3, 2.2])
-def test_gaussian_kernel1d(sigma):
-    tail = int(sigma * 3)
-    expected = [np.exp(-0.5 * x ** 2 / sigma ** 2) for x in range(-tail, tail + 1)]
-    expected = expected / np.sum(expected)
-    got = label.gaussian_kernel1d(sigma)
-    assert is_equal_tf(got, expected)
-
-
-@pytest.mark.parametrize("sigma", [1, 3, 2.2])
-def test_cauchy_kernel1d(sigma):
-    tail = int(sigma * 5)
-    expected = [1 / ((x / sigma) ** 2 + 1) for x in range(-tail, tail + 1)]
-    expected = expected / np.sum(expected)
-    got = label.cauchy_kernel1d(sigma)
-    assert is_equal_tf(got, expected)
+import deepreg.loss.label as label
 
 
 class TestMultiScaleLoss:
@@ -44,7 +26,7 @@ class TestMultiScaleLoss:
         expected = dict(
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.AUTO,
+            reduction=tf.keras.losses.Reduction.SUM,
             name="MultiScaleLoss",
         )
         assert got == expected
@@ -62,7 +44,7 @@ class TestDiceScore:
         return np.ones(shape=self.shape) * 0.3
 
     @pytest.mark.parametrize(
-        "binary,neg_weight,scales,expected",
+        "binary,background_weight,scales,expected",
         [
             (True, 0.0, None, 0.0),
             (False, 0.0, None, 0.4),
@@ -71,25 +53,25 @@ class TestDiceScore:
             (False, 0.2, [0, 1], 0.46030036),
         ],
     )
-    def test_call(self, y_true, y_pred, binary, neg_weight, scales, expected):
+    def test_call(self, y_true, y_pred, binary, background_weight, scales, expected):
         expected = np.array([expected] * self.shape[0])  # call returns (batch, )
-        got = label.DiceScore(binary=binary, neg_weight=neg_weight, scales=scales).call(
-            y_true=y_true, y_pred=y_pred
-        )
+        got = label.DiceScore(
+            binary=binary, background_weight=background_weight, scales=scales
+        ).call(y_true=y_true, y_pred=y_pred)
         assert is_equal_tf(got, expected)
-        got = label.DiceLoss(binary=binary, neg_weight=neg_weight, scales=scales).call(
-            y_true=y_true, y_pred=y_pred
-        )
+        got = label.DiceLoss(
+            binary=binary, background_weight=background_weight, scales=scales
+        ).call(y_true=y_true, y_pred=y_pred)
         assert is_equal_tf(got, -expected)
 
     def test_get_config(self):
         got = label.DiceScore().get_config()
         expected = dict(
             binary=False,
-            neg_weight=0.0,
+            background_weight=0.0,
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.AUTO,
+            reduction=tf.keras.losses.Reduction.SUM,
             name="DiceScore",
         )
         assert got == expected
@@ -107,7 +89,7 @@ class TestCrossEntropy:
         return np.ones(shape=self.shape) * 0.3
 
     @pytest.mark.parametrize(
-        "binary,neg_weight,scales,expected",
+        "binary,background_weight,scales,expected",
         [
             (True, 0.0, None, -np.log(1.0e-7)),
             (False, 0.0, None, -0.6 * np.log(0.3)),
@@ -116,10 +98,10 @@ class TestCrossEntropy:
             (False, 0.2, [0, 1], 0.5239637),
         ],
     )
-    def test_call(self, y_true, y_pred, binary, neg_weight, scales, expected):
+    def test_call(self, y_true, y_pred, binary, background_weight, scales, expected):
         expected = np.array([expected] * self.shape[0])  # call returns (batch, )
         got = label.CrossEntropy(
-            binary=binary, neg_weight=neg_weight, scales=scales
+            binary=binary, background_weight=background_weight, scales=scales
         ).call(y_true=y_true, y_pred=y_pred)
         assert is_equal_tf(got, expected)
 
@@ -127,10 +109,10 @@ class TestCrossEntropy:
         got = label.CrossEntropy().get_config()
         expected = dict(
             binary=False,
-            neg_weight=0.0,
+            background_weight=0.0,
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.AUTO,
+            reduction=tf.keras.losses.Reduction.SUM,
             name="CrossEntropy",
         )
         assert got == expected
@@ -173,7 +155,7 @@ class TestJaccardIndex:
             binary=False,
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.AUTO,
+            reduction=tf.keras.losses.Reduction.SUM,
             name="JaccardIndex",
         )
         assert got == expected
@@ -208,26 +190,6 @@ def test_foreground_prop_simple():
     tensor_eye = tf.convert_to_tensor(tensor_eye, dtype=tf.float32)
     expect = [54 / (27 * 9), 54 / (27 * 9), 54 / (27 * 9)]
     get = label.foreground_proportion(tensor_eye)
-    assert is_equal_tf(get, expect)
-
-
-def test_separable_filter():
-    """
-    Testing separable filter case where non
-    zero length tensor is passed to the
-    function.
-    """
-    k = np.ones((3, 3, 3, 3), dtype=np.float32)
-    array_eye = np.identity(3, dtype=np.float32)
-    tensor_pred = np.zeros((3, 3, 3, 3), dtype=np.float32)
-    tensor_pred[:, :, 0, 0] = array_eye
-    tensor_pred = tf.convert_to_tensor(tensor_pred, dtype=tf.float32)
-    k = tf.convert_to_tensor(k, dtype=tf.float32)
-
-    expect = np.ones((3, 3, 3, 3), dtype=np.float32)
-    expect = tf.convert_to_tensor(expect, dtype=tf.float32)
-
-    get = label.separable_filter(tensor_pred, k)
     assert is_equal_tf(get, expect)
 
 

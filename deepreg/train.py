@@ -6,43 +6,46 @@ Module to train a network using init files and a CLI.
 
 import argparse
 import os
+from typing import Dict, List, Tuple, Union
 
 import tensorflow as tf
 
+import deepreg.config.parser as config_parser
 import deepreg.model.optimizer as opt
-import deepreg.parser as config_parser
 from deepreg.callback import build_checkpoint_callback
-from deepreg.model.network.build import build_model
-from deepreg.registry import REGISTRY, Registry
+from deepreg.registry import REGISTRY
 from deepreg.util import build_dataset, build_log_dir
 
 
 def build_config(
-    config_path: (str, list),
-    log_root: str,
+    config_path: Union[str, List[str]],
     log_dir: str,
+    exp_name: str,
     ckpt_path: str,
     max_epochs: int = -1,
-) -> [dict, str]:
+) -> Tuple[Dict, str, str]:
     """
     Function to initialise log directories,
     assert that checkpointed model is the right
     type and to parse the configuration for training.
 
     :param config_path: list of str, path to config file
-    :param log_root: root of logs
-    :param log_dir: path to where training logs to be stored.
+    :param log_dir: path of the log directory
+    :param exp_name: name of the experiment
     :param ckpt_path: path where model is stored.
     :param max_epochs: if max_epochs > 0, use it to overwrite the configuration
     :return: - config: a dictionary saving configuration
-             - log_dir: the path of directory to save logs
+             - exp_name: the path of directory to save logs
     """
 
     # init log directory
-    log_dir = build_log_dir(log_root=log_root, log_dir=log_dir)
+    log_dir = build_log_dir(log_dir=log_dir, exp_name=exp_name)
 
     # load config
     config = config_parser.load_configs(config_path)
+
+    # replace the ~ with user home path
+    ckpt_path = os.path.expanduser(ckpt_path)
 
     # overwrite epochs and save_period if necessary
     if max_epochs > 0:
@@ -56,40 +59,38 @@ def build_config(
     gpus = tf.config.experimental.list_physical_devices("GPU")
     config["train"]["preprocess"]["batch_size"] *= max(len(gpus), 1)
 
-    return config, log_dir
+    return config, log_dir, ckpt_path
 
 
 def train(
     gpu: str,
-    config_path: (str, list),
+    config_path: Union[str, List[str]],
     gpu_allow_growth: bool,
     ckpt_path: str,
-    log_dir: str,
-    log_root: str = "logs",
+    exp_name: str = "",
+    log_dir: str = "logs",
     max_epochs: int = -1,
-    registry: Registry = REGISTRY,
 ):
     """
     Function to train a model.
 
-    :param gpu: which local gpu to use to train
-    :param config_path: path to configuration set up
-    :param gpu_allow_growth: whether to allocate whole GPU memory for training
-    :param ckpt_path: where to store training checkpoints
-    :param log_root: root of logs
-    :param log_dir: where to store logs in training
-    :param max_epochs: if max_epochs > 0, will use it to overwrite the configuration
-    :param registry: registry to construct class objects
+    :param gpu: which local gpu to use to train.
+    :param config_path: path to configuration set up.
+    :param gpu_allow_growth: whether to allocate whole GPU memory for training.
+    :param ckpt_path: where to store training checkpoints.
+    :param log_dir: path of the log directory.
+    :param exp_name: experiment name.
+    :param max_epochs: if max_epochs > 0, will use it to overwrite the configuration.
     """
     # set env variables
     os.environ["CUDA_VISIBLE_DEVICES"] = gpu
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true" if gpu_allow_growth else "false"
 
     # load config
-    config, log_dir = build_config(
+    config, log_dir, ckpt_path = build_config(
         config_path=config_path,
-        log_root=log_root,
         log_dir=log_dir,
+        exp_name=exp_name,
         ckpt_path=ckpt_path,
         max_epochs=max_epochs,
     )
@@ -101,7 +102,6 @@ def train(
         mode="train",
         training=True,
         repeat=True,
-        registry=registry,
     )
     assert data_loader_train is not None  # train data should not be None
     data_loader_val, dataset_val, steps_per_epoch_val = build_dataset(
@@ -110,31 +110,35 @@ def train(
         mode="valid",
         training=False,
         repeat=True,
-        registry=registry,
     )
 
     # use strategy to support multiple GPUs
     # the network is mirrored in each GPU so that we can use larger batch size
-    # https://www.tensorflow.org/guide/distributed_training#using_tfdistributestrategy_with_tfkerasmodelfit
+    # https://www.tensorflow.org/guide/distributed_training
     # only model, optimizer and metrics need to be defined inside the strategy
-    if len(tf.config.list_physical_devices("GPU")) > 1:
+    num_devices = max(len(tf.config.list_physical_devices("GPU")), 1)
+    if num_devices > 1:
         strategy = tf.distribute.MirroredStrategy()  # pragma: no cover
     else:
         strategy = tf.distribute.get_strategy()
     with strategy.scope():
-        model = build_model(
-            moving_image_size=data_loader_train.moving_image_shape,
-            fixed_image_size=data_loader_train.fixed_image_shape,
-            index_size=data_loader_train.num_indices,
-            labeled=config["dataset"]["labeled"],
-            batch_size=config["train"]["preprocess"]["batch_size"],
-            train_config=config["train"],
-            registry=registry,
+        model: tf.keras.Model = REGISTRY.build_model(
+            config=dict(
+                name=config["train"]["method"],
+                moving_image_size=data_loader_train.moving_image_shape,
+                fixed_image_size=data_loader_train.fixed_image_shape,
+                index_size=data_loader_train.num_indices,
+                labeled=config["dataset"]["labeled"],
+                batch_size=config["train"]["preprocess"]["batch_size"],
+                config=config["train"],
+                num_devices=num_devices,
+            )
         )
         optimizer = opt.build_optimizer(optimizer_config=config["train"]["optimizer"])
 
     # compile
     model.compile(optimizer=optimizer)
+    model.plot_model(output_dir=log_dir)
 
     # build callbacks
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
@@ -150,7 +154,8 @@ def train(
     callbacks = [tensorboard_callback, ckpt_callback]
 
     # train
-    # it's necessary to define the steps_per_epoch and validation_steps to prevent errors like
+    # it's necessary to define the steps_per_epoch
+    # and validation_steps to prevent errors like
     # BaseCollectiveExecutor::StartAbort Out of range: End of sequence
     model.fit(
         x=dataset_train,
@@ -172,7 +177,7 @@ def main(args=None):
     """
     Entry point for train script.
 
-    :param args:
+    :param args: arguments
     """
 
     parser = argparse.ArgumentParser()
@@ -206,11 +211,11 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "--log_root", help="Root of log directory.", default="logs", type=str
+        "--log_dir", help="Path of log directory.", default="logs", type=str
     )
 
     parser.add_argument(
-        "--log_dir",
+        "--exp_name",
         "-l",
         help="Name of log directory."
         "The directory is under log root, e.g. logs/ by default."
@@ -241,8 +246,8 @@ def main(args=None):
         config_path=args.config_path,
         gpu_allow_growth=args.gpu_allow_growth,
         ckpt_path=args.ckpt_path,
-        log_root=args.log_root,
         log_dir=args.log_dir,
+        exp_name=args.exp_name,
         max_epochs=args.max_epochs,
     )
 

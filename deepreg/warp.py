@@ -13,7 +13,27 @@ import numpy as np
 import tensorflow as tf
 
 from deepreg.dataset.loader.nifti_loader import load_nifti_file
-from deepreg.model.layer_util import warp_image_ddf
+from deepreg.model.layer import Warping
+
+
+def shape_sanity_check(image: np.ndarray, ddf: np.ndarray):
+    """
+    Verify image and ddf shapes are consistent and correct.
+
+    :param image: a numpy array of shape (m_dim1, m_dim2, m_dim3)
+        or (m_dim1, m_dim2, m_dim3, ch)
+    :param ddf: a numpy array of shape (f_dim1, f_dim2, f_dim3, 3)
+    """
+    if len(image.shape) not in [3, 4]:
+        raise ValueError(
+            f"image shape must be (m_dim1, m_dim2, m_dim3) "
+            f"or (m_dim1, m_dim2, m_dim3, ch),"
+            f" got {image.shape}"
+        )
+    if not (len(ddf.shape) == 4 and ddf.shape[-1] == 3):
+        raise ValueError(
+            f"ddf shape must be (f_dim1, f_dim2, f_dim3, 3), got {ddf.shape}"
+        )
 
 
 def warp(image_path: str, ddf_path: str, out_path: str):
@@ -39,22 +59,15 @@ def warp(image_path: str, ddf_path: str, out_path: str):
     # load image and ddf
     image = load_nifti_file(image_path)
     ddf = load_nifti_file(ddf_path)
-    if len(image.shape) not in [3, 4]:
-        raise ValueError(
-            f"image shape must be (m_dim1, m_dim2, m_dim3) "
-            f"or (m_dim1, m_dim2, m_dim3, ch),"
-            f" got {image.shape}"
-        )
-    if not (len(ddf.shape) == 4 and ddf.shape[-1] == 3):
-        raise ValueError(
-            f"ddf shape must be (f_dim1, f_dim2, f_dim3, 3), got {ddf.shape}"
-        )
+    fixed_image_shape = ddf.shape[:3]
+    shape_sanity_check(image=image, ddf=ddf)
+
     # add batch dimension manually
     image = tf.expand_dims(image, axis=0)
     ddf = tf.expand_dims(ddf, axis=0)
 
     # warp
-    warped_image = warp_image_ddf(image=image, ddf=ddf, grid_ref=None)
+    warped_image = Warping(fixed_image_size=fixed_image_shape)([ddf, image])
     warped_image = warped_image.numpy()
     warped_image = warped_image[0, ...]  # removed added batch dimension
 

@@ -9,16 +9,16 @@ import argparse
 import logging
 import os
 import shutil
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
 
+import deepreg.config.parser as config_parser
 import deepreg.model.layer_util as layer_util
 import deepreg.model.optimizer as opt
-import deepreg.parser as config_parser
 from deepreg.callback import build_checkpoint_callback
-from deepreg.model.network.build import build_model
-from deepreg.registry import REGISTRY, Registry
+from deepreg.registry import REGISTRY
 from deepreg.util import (
     build_dataset,
     build_log_dir,
@@ -28,7 +28,7 @@ from deepreg.util import (
 )
 
 
-def build_pair_output_path(indices: list, save_dir: str) -> (str, str):
+def build_pair_output_path(indices: list, save_dir: str) -> Tuple[str, str]:
     """
     Create directory for saving the paired data
 
@@ -75,130 +75,67 @@ def predict_on_dataset(
     """
     # remove the save_dir in case it exists
     if os.path.exists(save_dir):
-        shutil.rmtree(save_dir)
+        shutil.rmtree(save_dir)  # pragma: no cover
 
     sample_index_strs = []
     metric_lists = []
-    for _, inputs_dict in enumerate(dataset):
-        batch_size = inputs_dict[list(inputs_dict.keys())[0]].shape[0]
-        outputs_dict = model.predict(x=inputs_dict, batch_size=batch_size)
+    for _, inputs in enumerate(dataset):
+        batch_size = inputs[list(inputs.keys())[0]].shape[0]
+        outputs = model.predict(x=inputs, batch_size=batch_size)
+        indices, processed = model.postprocess(inputs=inputs, outputs=outputs)
 
-        # moving image/label
-        # (batch, m_dim1, m_dim2, m_dim3)
-        moving_image = inputs_dict["moving_image"]
-        moving_label = inputs_dict.get("moving_label", None)
-        # fixed image/labelimage_index
-        # (batch, f_dim1, f_dim2, f_dim3)
-        fixed_image = inputs_dict["fixed_image"]
-        fixed_label = inputs_dict.get("fixed_label", None)
-
-        # indices to identify the pair
-        # (batch, num_indices) last indice is for label, -1 means unlabeled data
-        indices = inputs_dict.get("indices")
-        # ddf / dvf
-        # (batch, f_dim1, f_dim2, f_dim3, 3)
-        ddf = outputs_dict.get("ddf", None)
-        dvf = outputs_dict.get("dvf", None)
-        affine = outputs_dict.get("affine", None)  # (batch, 4, 3)
-
-        # prediction
-        # (batch, f_dim1, f_dim2, f_dim3)
-        pred_fixed_label = outputs_dict.get("pred_fixed_label", None)
-        pred_fixed_image = (
-            layer_util.resample(vol=moving_image, loc=fixed_grid_ref + ddf)
-            if ddf is not None
-            else None
-        )
+        # convert to np arrays
+        indices = indices.numpy()
+        processed = {
+            k: (v[0].numpy() if isinstance(v[0], tf.Tensor) else v[0], v[1], v[2])
+            for k, v in processed.items()
+        }
 
         # save images of inputs and outputs
-        for sample_index in range(moving_image.shape[0]):
-            # save moving/fixed image under pair_dir
-            # save moving/fixed label, pred fixed image/label, ddf/dvf under label dir
-            # if labeled, label dir is a sub dir of pair_dir, otherwise = pair_dir
+        for sample_index in range(batch_size):
+            # save label independent tensors under pair_dir, otherwise under label_dir
 
             # init output path
-            indices_i = indices[sample_index, :].numpy().astype(int).tolist()
+            indices_i = indices[sample_index, :].astype(int).tolist()
             pair_dir, label_dir = build_pair_output_path(
                 indices=indices_i, save_dir=save_dir
             )
 
-            # save image/label
-            # if model is conditional, the pred_fixed_image depends on the input label
-            conditional = model_method == "conditional"
-            arr_save_dirs = [
-                pair_dir,
-                pair_dir,
-                label_dir if conditional else pair_dir,
-                label_dir,
-                label_dir,
-                label_dir,
-            ]
-            arrs = [
-                moving_image,
-                fixed_image,
-                pred_fixed_image,
-                moving_label,
-                fixed_label,
-                pred_fixed_label,
-            ]
-            names = [
-                "moving_image",
-                "fixed_image",
-                "pred_fixed_image",  # or warped moving image
-                "moving_label",
-                "fixed_label",
-                "pred_fixed_label",  # or warped moving label
-            ]
-            for arr_save_dir, arr, name in zip(arr_save_dirs, arrs, names):
-                if arr is not None:
-                    # for files under pair_dir, do not overwrite
-                    save_array(
-                        save_dir=arr_save_dir,
-                        arr=arr[sample_index, :, :, :],
-                        name=name,
-                        normalize="image" in name,  # label's value is already in [0, 1]
-                        save_nifti=save_nifti,
-                        save_png=save_png,
-                        overwrite=arr_save_dir == label_dir,
+            for name, (arr, normalize, on_label) in processed.items():
+                if name == "theta":
+                    np.savetxt(
+                        fname=os.path.join(pair_dir, "affine.txt"),
+                        X=arr[sample_index, :, :],
+                        delimiter=",",
                     )
+                    continue
 
-            # save ddf / dvf
-            arrs = [ddf, dvf]
-            names = ["ddf", "dvf"]
-            for arr, name in zip(arrs, names):
-                if arr is not None:
-                    save_array(
-                        save_dir=label_dir if conditional else pair_dir,
-                        arr=arr[sample_index, :, :, :],
-                        name=name,
-                        normalize=True,
-                        save_nifti=save_nifti,
-                        save_png=save_png,
-                    )
-
-            # save affine
-            if affine is not None:
-                np.savetxt(
-                    fname=os.path.join(
-                        label_dir if conditional else pair_dir, "affine.txt"
-                    ),
-                    x=affine[sample_index, :, :].numpy(),
-                    delimiter=",",
+                arr_save_dir = label_dir if on_label else pair_dir
+                save_array(
+                    save_dir=arr_save_dir,
+                    arr=arr[sample_index, :, :, :],
+                    name=name,
+                    normalize=normalize,  # label's value is already in [0, 1]
+                    save_nifti=save_nifti,
+                    save_png=save_png,
+                    overwrite=arr_save_dir == label_dir,
                 )
 
             # calculate metric
             sample_index_str = "_".join([str(x) for x in indices_i])
-            if sample_index_str in sample_index_strs:
+            if sample_index_str in sample_index_strs:  # pragma: no cover
                 raise ValueError(
                     "Sample is repeated, maybe the dataset has been repeated."
                 )
             sample_index_strs.append(sample_index_str)
 
             metric = calculate_metrics(
-                fixed_image=fixed_image,
-                fixed_label=fixed_label,
-                pred_fixed_image=pred_fixed_image,
-                pred_fixed_label=pred_fixed_label,
+                fixed_image=processed["fixed_image"][0],
+                fixed_label=processed["fixed_label"][0] if model.labeled else None,
+                pred_fixed_image=processed["pred_fixed_image"][0],
+                pred_fixed_label=processed["pred_fixed_label"][0]
+                if model.labeled
+                else None,
                 fixed_grid_ref=fixed_grid_ref,
                 sample_index=sample_index,
             )
@@ -211,21 +148,24 @@ def predict_on_dataset(
 
 
 def build_config(
-    config_path: (str, list), log_root: str, log_dir: str, ckpt_path: str
-) -> [dict, str]:
+    config_path: Union[str, List[str]], log_dir: str, exp_name: str, ckpt_path: str
+) -> Tuple[Dict, str, str]:
     """
     Function to create new directory to log directory to store results.
 
-    :param config_path: string or list of strings, path of configuration files
-    :param log_root: str, root of logs
-    :param log_dir: string, path to store logs.
-    :param ckpt_path: str, path where model is stored.
-    :return: - config, configuration dictionary
-             - log_dir, path of the directory for saving outputs
+    :param config_path: path of configuration files.
+    :param log_dir: path of the log directory.
+    :param exp_name: experiment name.
+    :param ckpt_path: path where model is stored.
+    :return: - config, configuration dictionary.
+             - exp_name, path of the directory for saving outputs.
     """
 
     # init log directory
-    log_dir = build_log_dir(log_root=log_root, log_dir=log_dir)
+    log_dir = build_log_dir(log_dir=log_dir, exp_name=exp_name)
+
+    # replace the ~ with user home path
+    ckpt_path = os.path.expanduser(ckpt_path)
 
     # load config
     if config_path == "":
@@ -240,7 +180,7 @@ def build_config(
             "The code might break if the config doesn't match the saved model."
         )
         config = config_parser.load_configs(config_path)
-    return config, log_dir
+    return config, log_dir, ckpt_path
 
 
 def predict(
@@ -249,13 +189,11 @@ def predict(
     ckpt_path: str,
     mode: str,
     batch_size: int,
-    log_dir: str,
-    sample_label: str,
-    config_path: (str, list),
+    exp_name: str,
+    config_path: Union[str, List[str]],
     save_nifti: bool = True,
     save_png: bool = True,
-    log_root: str = "logs",
-    registry: Registry = REGISTRY,
+    log_dir: str = "logs",
 ):
     """
     Function to predict some metrics from the saved model and logging results.
@@ -265,13 +203,11 @@ def predict(
     :param ckpt_path: where model is stored, should be like log_folder/save/ckpt-x
     :param mode: train / valid / test, to define which split of dataset to be evaluated
     :param batch_size: int, batch size to perform predictions in
-    :param log_dir: path to store logs
-    :param log_root: folder name to store logs
-    :param sample_label: sample/all, not used
+    :param exp_name: name of the experiment
+    :param log_dir: path of the log directory
     :param save_nifti: if true, outputs will be saved in nifti format
     :param save_png: if true, outputs will be saved in png format
     :param config_path: to overwrite the default config
-    :param registry: registry to construct class objects
     """
     # TODO support custom sample_label
     logging.warning(
@@ -284,8 +220,8 @@ def predict(
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "false" if gpu_allow_growth else "true"
 
     # load config
-    config, log_dir = build_config(
-        config_path=config_path, log_root=log_root, log_dir=log_dir, ckpt_path=ckpt_path
+    config, log_dir, ckpt_path = build_config(
+        config_path=config_path, log_dir=log_dir, exp_name=exp_name, ckpt_path=ckpt_path
     )
     preprocess_config = config["train"]["preprocess"]
     # batch_size corresponds to batch_size per GPU
@@ -299,21 +235,23 @@ def predict(
         mode=mode,
         training=False,
         repeat=False,
-        registry=registry,
     )
+    assert data_loader is not None
 
     # optimizer
     optimizer = opt.build_optimizer(optimizer_config=config["train"]["optimizer"])
 
     # model
-    model = build_model(
-        moving_image_size=data_loader.moving_image_shape,
-        fixed_image_size=data_loader.fixed_image_shape,
-        index_size=data_loader.num_indices,
-        labeled=config["dataset"]["labeled"],
-        batch_size=preprocess_config["batch_size"],
-        train_config=config["train"],
-        registry=registry,
+    model: tf.keras.Model = REGISTRY.build_model(
+        config=dict(
+            name=config["train"]["method"],
+            moving_image_size=data_loader.moving_image_shape,
+            fixed_image_size=data_loader.fixed_image_shape,
+            index_size=data_loader.num_indices,
+            labeled=config["dataset"]["labeled"],
+            batch_size=config["train"]["preprocess"]["batch_size"],
+            config=config["train"],
+        )
     )
 
     # metrics
@@ -344,7 +282,7 @@ def predict(
         fixed_grid_ref=fixed_grid_ref,
         model=model,
         model_method=config["train"]["method"],
-        save_dir=log_dir + "/test",
+        save_dir=os.path.join(log_dir, "test"),
         save_nifti=save_nifti,
         save_png=save_png,
     )
@@ -403,20 +341,11 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "--log_root", help="Root of log directory.", default="logs", type=str
+        "--log_dir", help="Path of log directory.", default="logs", type=str
     )
 
     parser.add_argument(
-        "--log_dir", "-l", help="Path of log directory", default="", type=str
-    )
-
-    # TODO use this argument
-    parser.add_argument(
-        "--sample_label",
-        "-s",
-        help="Method of sampling labels",
-        default="all",
-        type=str,
+        "--exp_name", "-n", help="Name of the experiment.", default="", type=str
     )
 
     parser.add_argument("--save_nifti", dest="nifti", action="store_true")
@@ -444,9 +373,8 @@ def main(args=None):
         ckpt_path=args.ckpt_path,
         mode=args.mode,
         batch_size=args.batch_size,
-        log_root=args.log_root,
         log_dir=args.log_dir,
-        sample_label=args.sample_label,
+        exp_name=args.exp_name,
         config_path=args.config_path,
         save_nifti=args.nifti,
         save_png=args.png,

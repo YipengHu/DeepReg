@@ -1,3 +1,6 @@
+# type: ignore
+# Ignored mypy pre-commit hook in this file
+
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -21,7 +24,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 # -- Project information -----------------------------------------------------
 
 project = "DeepReg"
-copyright = "2020, DeepReg"
+copyright = "2021, DeepReg"
 author = "DeepReg"
 
 # -- General configuration ---------------------------------------------------

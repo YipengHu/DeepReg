@@ -15,6 +15,9 @@
       <a href="https://pypi.python.org/pypi/DeepReg/">
       <img src="https://img.shields.io/pypi/v/deepreg.svg" alt="PyPI Version">
       </a>
+      <a href="https://pypi.python.org/pypi/DeepReg/">
+      <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/deepreg">
+      </a>
       <a href="https://pepy.tech/project/deepreg">
       <img src="https://static.pepy.tech/personalized-badge/deepreg?period=total&units=none&left_color=grey&right_color=orange&left_text=Downloads"
         alt="PyPI downloads">
@@ -36,11 +39,11 @@
       <b>Code</b>
     </td>
     <td>
-      <a href="https://github.com/DeepRegNet/DeepReg/actions?query=workflow%3A%20Unit%20Test">
+      <a href="https://github.com/DeepRegNet/DeepReg/actions?query=workflow%3A%22Unit+Test%22">
       <img src="https://github.com/deepregnet/deepreg/workflows/Unit%20Test/badge.svg?branch=main" alt="Unit Test">
       </a>
-      <a href="https://github.com/DeepRegNet/DeepReg/actions?query=workflow%3A%20Demo%20Test">
-      <img src="https://github.com/deepregnet/deepreg/workflows/Demo%20Test/badge.svg?branch=main" alt="Demo Test">
+      <a href="https://github.com/DeepRegNet/DeepReg/actions?query=workflow%3A%22Integration+Test%22">
+      <img src="https://github.com/deepregnet/deepreg/workflows/Integration%20Test/badge.svg?branch=main" alt="Integration Test">
       </a>
       <a href="https://codecov.io/github/DeepRegNet/DeepReg">
       <img src="https://codecov.io/gh/DeepRegNet/DeepReg/branch/main/graph/badge.svg" alt="Coverage Status">
@@ -48,7 +51,7 @@
       <a href="https://github.com/psf/black">
       <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code Style">
       </a>
-      <a href="scrutinizer-ci.com/g/DeepRegNet/DeepReg">
+      <a href="https://scrutinizer-ci.com/g/DeepRegNet/DeepReg/">
       <img src="https://scrutinizer-ci.com/g/DeepRegNet/DeepReg/badges/quality-score.png" alt="Code Quality">
       </a>
       <a href="https://codeclimate.com/github/DeepRegNet/DeepReg/maintainability">
@@ -133,7 +136,7 @@ you can also
 Members of the DeepReg dev team presented "The Road to DeepReg" at the Centre for
 Medical Imaging Computing (CMIC) seminar series at University College London on the 4th
 of November 2020. You can access the talk
-[here](https://eu.bbcollab.com/collab/ui/session/playback/load/941325351b64410eb886bbaf9aa64fb9?authToken=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJiYkNvbGxhYkFwaSIsInJlY29yZGluZ1VpZCI6Ijk0MTMyNTM1MWI2NDQxMGViODg2YmJhZjlhYTY0ZmI5IiwiaXNzIjoiYmJDb2xsYWJBcGkiLCJ0eXBlIjoxLCJleHAiOjE2MDYyMjc4NTIsImlhdCI6MTYwNjIyNDI1MiwiY29uc3VtZXIiOiI4NmU2YWQ3YzVlZDU0NzhlOGViMTQyODUyYWNiYzA5ZiJ9.VZIJqu3q4dVSkEy7X6sysvxWK5d_Xj9cvOSmG9sdZ_U&name=CMIC%252FWEISS%20joint%20seminar%20series%20-%20Wedn.%204th%20November%20-%20recording_1).
+[here](https://www.youtube.com/watch?v=jDEyWXZM3CE&feature=youtu.be).
 
 ## Citing DeepReg
 

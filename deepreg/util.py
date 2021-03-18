@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+from typing import Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import nibabel as nib
@@ -8,12 +9,11 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-import deepreg.model.loss.image as image_loss
-import deepreg.model.loss.label as label_loss
+import deepreg.loss.image as image_loss
+import deepreg.loss.label as label_loss
 from deepreg.dataset.load import get_data_loader
 from deepreg.dataset.loader.interface import DataLoader
 from deepreg.dataset.loader.util import normalize_array
-from deepreg.registry import Registry
 
 
 def build_dataset(
@@ -22,8 +22,7 @@ def build_dataset(
     mode: str,
     training: bool,
     repeat: bool,
-    registry: Registry,
-) -> [(DataLoader, None), (tf.data.Dataset, None), (int, None)]:
+) -> Tuple[Optional[DataLoader], Optional[tf.data.Dataset], Optional[int]]:
     """
     Function to prepare dataset for training and validation.
     :param dataset_config: configuration for dataset
@@ -32,7 +31,6 @@ def build_dataset(
     :param training: bool, if true, data augmentation and shuffling will be added
     :param repeat: bool, if true, dataset will be repeated,
         true for train/valid dataset during model.fit
-    :param registry: registry to construct class objects
 
     :return:
     - (data_loader_train, dataset_train, steps_per_epoch_train)
@@ -53,14 +51,17 @@ def build_dataset(
     return data_loader, dataset, steps_per_epoch
 
 
-def build_log_dir(log_root: str, log_dir: str) -> str:
+def build_log_dir(log_dir: str, exp_name: str) -> str:
     """
-    :param log_root: str, root of logs
-    :param log_dir: str, path to where training logs to be stored.
-    :return: the path of directory to save logs
+    Build a log directory for the experiment.
+
+    :param log_dir: path of the log directory.
+    :param exp_name: name of the experiment.
+    :return: the path of directory to save logs.
     """
     log_dir = os.path.join(
-        log_root, datetime.now().strftime("%Y%m%d-%H%M%S") if log_dir == "" else log_dir
+        os.path.expanduser(log_dir),
+        datetime.now().strftime("%Y%m%d-%H%M%S") if exp_name == "" else exp_name,
     )
     if os.path.exists(log_dir):
         logging.warning("Log directory {} exists already.".format(log_dir))
@@ -71,7 +72,7 @@ def build_log_dir(log_root: str, log_dir: str) -> str:
 
 def save_array(
     save_dir: str,
-    arr: (np.ndarray, tf.Tensor),
+    arr: Union[np.ndarray, tf.Tensor],
     name: str,
     normalize: bool,
     save_nifti: bool = True,
@@ -139,9 +140,9 @@ def save_array(
 
 def calculate_metrics(
     fixed_image: tf.Tensor,
-    fixed_label: (tf.Tensor, None),
-    pred_fixed_image: (tf.Tensor, None),
-    pred_fixed_label: (tf.Tensor, None),
+    fixed_label: Optional[tf.Tensor],
+    pred_fixed_image: Optional[tf.Tensor],
+    pred_fixed_label: Optional[tf.Tensor],
     fixed_grid_ref: tf.Tensor,
     sample_index: int,
 ) -> dict:

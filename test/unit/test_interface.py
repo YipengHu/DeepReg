@@ -18,7 +18,6 @@ from deepreg.dataset.loader.interface import (
 from deepreg.dataset.loader.nifti_loader import NiftiFileLoader
 from deepreg.dataset.loader.paired_loader import PairedDataLoader
 from deepreg.dataset.loader.util import normalize_array
-from deepreg.registry import REGISTRY
 
 
 class TestDataLoader:
@@ -134,7 +133,6 @@ class TestDataLoader:
             batch_size=batch_size,
             repeat=True,
             shuffle_buffer_num_batch=1,
-            registry=REGISTRY,
             **data_augmentation,
         )
 
@@ -509,8 +507,7 @@ def test_file_loader():
     assert "Groups of ID [0, 2, 2] are empty." in str(err_info.value)
 
     # test ungrouped file loader
-    with pytest.raises(AttributeError):
-        loader_ungrouped.group_struct
+    assert loader_ungrouped.group_struct is None
     with pytest.raises(AssertionError):
         loader_ungrouped.get_num_groups()
     with pytest.raises(AssertionError):

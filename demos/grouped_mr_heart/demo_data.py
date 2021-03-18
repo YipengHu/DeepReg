@@ -25,7 +25,7 @@ filenames_indices = list(
     set([int(fn.split("/")[-1].split("_")[0]) for fn in filenames_all])
 )
 if len(filenames_indices) is not num_data:
-    raise ("Missing data in image groups.")
+    raise ValueError("Missing data in image groups.")
 
 if os.path.exists(DATA_PATH):
     shutil.rmtree(DATA_PATH)
@@ -93,11 +93,10 @@ for fn in folders:
     os.mkdir(os.path.join(fn, "images"))
 
 group_names = os.listdir(images_path)
-for group in group_names:
-    idx = group_names.index(group)
-    if idx < num_train:  # train
+for g_idx, group in enumerate(group_names):
+    if g_idx < num_train:  # train
         fidx = 0
-    elif idx < (num_train + num_val):  # val
+    elif g_idx < (num_train + num_val):  # val
         fidx = 1
     else:  # test
         fidx = 2
@@ -113,15 +112,13 @@ if os.path.exists(MODEL_PATH):
     shutil.rmtree(MODEL_PATH)
 os.mkdir(MODEL_PATH)
 
-num_zipfiles = 21
-zip_filepath = os.path.abspath(os.path.join(MODEL_PATH, "grouped_mr_heart_1.zip"))
-zip_file_parts = [
-    zip_filepath + ".%03d" % (idx + 1) for idx in range(num_zipfiles)
-]  # https://github.com/DeepRegNet/deepreg-model-zoo/blob/master/grouped_mr_heart_1/grouped_mr_heart_1.zip.021
-for idx, zip_file in enumerate(zip_file_parts, start=1):
+num_zipfiles = 11
+zip_filepath = os.path.abspath(os.path.join(MODEL_PATH, "checkpoint.zip"))
+zip_file_parts = [zip_filepath + ".%02d" % idx for idx in range(num_zipfiles)]
+for zip_file_idx, zip_file in enumerate(zip_file_parts):
     ORIGIN = (
-        "https://github.com/DeepRegNet/deepreg-model-zoo/raw/master/grouped_mr_heart_1/grouped_mr_heart_1.zip.%03d"
-        % idx
+        "https://github.com/DeepRegNet/deepreg-model-zoo/raw/master/demo/grouped_mr_heart/20210110/part.%02d"
+        % zip_file_idx
     )
     get_file(zip_file, ORIGIN)
 
