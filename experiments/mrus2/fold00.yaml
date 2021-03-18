@@ -1,21 +1,21 @@
 dataset:
   dir:
     train:
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold01"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold02"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold03"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold04"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold05"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold06"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold07"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold08"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold09"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold10"
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold11"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold01"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold02"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold03"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold04"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold05"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold06"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold07"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold08"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold09"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold10"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold11"
     valid:
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold00"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold00"
     test:
-      - "/home/yipenghu/Scratch/data/mrusv2/normalised/deepreg/fold00"
+      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold00"
   format: "h5"
   type: "paired"
   labeled: true
@@ -39,7 +39,7 @@ train:
       name: "dice"
       scales: [0, 1, 2, 4, 8, 16, 32]
     regularization:
-      weight: 0.5 # weight of regularization loss
+      weight: 1 # weight of regularization loss
       name: "bending" # options include "bending", "gradient"
 
   # define the optimizer
