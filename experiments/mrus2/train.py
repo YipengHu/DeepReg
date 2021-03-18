@@ -7,5 +7,5 @@ train(
     config_path="fold00.yaml",
     gpu_allow_growth=False,
     ckpt_path="",
-    log_dir= "logs_train/"+datetime.now().strftime("%Y%m%d-%H%M%S"),
+    log_dir= datetime.now().strftime("%Y%m%d-%H%M%S"),
 )
