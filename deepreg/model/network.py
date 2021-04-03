@@ -30,8 +30,8 @@ class RegistrationModel(tf.keras.Model):
 
     def __init__(
         self,
-        moving_image_size: tuple,
-        fixed_image_size: tuple,
+        moving_image_size: Tuple,
+        fixed_image_size: Tuple,
         index_size: int,
         labeled: bool,
         batch_size: int,
@@ -94,13 +94,13 @@ class RegistrationModel(tf.keras.Model):
 
         :return: dict of inputs.
         """
-        # (batch, m_dim1, m_dim2, m_dim3, 1)
+        # (batch, m_dim1, m_dim2, m_dim3)
         moving_image = tf.keras.Input(
             shape=self.moving_image_size,
             batch_size=self.batch_size,
             name="moving_image",
         )
-        # (batch, f_dim1, f_dim2, f_dim3, 1)
+        # (batch, f_dim1, f_dim2, f_dim3)
         fixed_image = tf.keras.Input(
             shape=self.fixed_image_size,
             batch_size=self.batch_size,
@@ -118,13 +118,13 @@ class RegistrationModel(tf.keras.Model):
                 moving_image=moving_image, fixed_image=fixed_image, indices=indices
             )
 
-        # (batch, m_dim1, m_dim2, m_dim3, 1)
+        # (batch, m_dim1, m_dim2, m_dim3)
         moving_label = tf.keras.Input(
             shape=self.moving_image_size,
             batch_size=self.batch_size,
             name="moving_label",
         )
-        # (batch, m_dim1, m_dim2, m_dim3, 1)
+        # (batch, m_dim1, m_dim2, m_dim3)
         fixed_label = tf.keras.Input(
             shape=self.fixed_image_size,
             batch_size=self.batch_size,
@@ -269,8 +269,9 @@ class RegistrationModel(tf.keras.Model):
             tre = compute_centroid_distance(
                 y_true=fixed_label, y_pred=pred_fixed_label, grid=self.grid_ref
             )
-            dice_binary = DiceScore(binary=True)(
-                y_true=fixed_label, y_pred=pred_fixed_label
+            dice_binary = (
+                DiceScore(binary=True)(y_true=fixed_label, y_pred=pred_fixed_label)
+                / self.global_batch_size
             )
             self._model.add_metric(tre, name="metric/TRE", aggregation="mean")
             self._model.add_metric(
@@ -381,8 +382,8 @@ class DDFModel(RegistrationModel):
         """Build the model to be saved as self._model."""
         # build inputs
         self._inputs = self.build_inputs()
-        moving_image = self._inputs["moving_image"]
-        fixed_image = self._inputs["fixed_image"]
+        moving_image = self._inputs["moving_image"]  # (batch, m_dim1, m_dim2, m_dim3)
+        fixed_image = self._inputs["fixed_image"]  # (batch, f_dim1, f_dim2, f_dim3)
 
         # build ddf
         control_points = self.config["backbone"].pop("control_points", False)
@@ -411,14 +412,14 @@ class DDFModel(RegistrationModel):
 
         # build outputs
         warping = layer.Warping(fixed_image_size=self.fixed_image_size)
-        # (f_dim1, f_dim2, f_dim3, 3)
+        # (f_dim1, f_dim2, f_dim3)
         pred_fixed_image = warping(inputs=[ddf, moving_image])
         self._outputs["pred_fixed_image"] = pred_fixed_image
 
         if not self.labeled:
             return tf.keras.Model(inputs=self._inputs, outputs=self._outputs)
 
-        # (f_dim1, f_dim2, f_dim3, 3)
+        # (f_dim1, f_dim2, f_dim3)
         moving_label = self._inputs["moving_label"]
         pred_fixed_label = warping(inputs=[ddf, moving_label])
 
