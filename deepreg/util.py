@@ -43,6 +43,7 @@ def build_dataset(
     data_loader = get_data_loader(dataset_config, mode)
     if data_loader is None:
         return None, None, None
+
     dataset = data_loader.get_dataset_and_preprocess(
         training=training, repeat=repeat, **preprocess_config
     )

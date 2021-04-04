@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple
 
 import tensorflow as tf
 
-from deepreg.loss.label import DiceScore, compute_centroid_distance
+from deepreg.loss.label import compute_centroid_distance
 from deepreg.model import layer, layer_util
 from deepreg.model.backbone import GlobalNet
 from deepreg.registry import REGISTRY
@@ -36,7 +36,6 @@ class RegistrationModel(tf.keras.Model):
         labeled: bool,
         batch_size: int,
         config: dict,
-        num_devices: int = 1,
         name: str = "RegistrationModel",
     ):
         """
@@ -46,10 +45,10 @@ class RegistrationModel(tf.keras.Model):
         :param fixed_image_size: (f_dim1, f_dim2, f_dim3)
         :param index_size: number of indices for identify each sample
         :param labeled: if the data is labeled
-        :param batch_size: size of mini-batch
+        :param batch_size: number of samples per step. When using multiple
+            devices, TensorFlow automatically split the tensors.
+            Therefore, input shapes should be defined over batch_size.
         :param config: config for method, backbone, and loss.
-        :param num_devices: number of GPU used,
-            global_batch_size = batch_size*num_devices
         :param name: name of the model
         """
         super().__init__(name=name)
@@ -57,10 +56,8 @@ class RegistrationModel(tf.keras.Model):
         self.fixed_image_size = fixed_image_size
         self.index_size = index_size
         self.labeled = labeled
-        self.batch_size = batch_size
         self.config = config
-        self.num_devices = num_devices
-        self.global_batch_size = num_devices * batch_size
+        self.batch_size = batch_size
 
         self._inputs = None  # save inputs of self._model as dict
         self._outputs = None  # save outputs of self._model as dict
@@ -80,7 +77,6 @@ class RegistrationModel(tf.keras.Model):
             labeled=self.labeled,
             batch_size=self.batch_size,
             config=self.config,
-            num_devices=self.num_devices,
             name=self.name,
         )
 
@@ -217,7 +213,7 @@ class RegistrationModel(tf.keras.Model):
             loss_layer: tf.keras.layers.Layer = REGISTRY.build_loss(
                 config=dict_without(d=loss_config, key="weight")
             )
-            loss_value = loss_layer(**inputs_dict) / self.global_batch_size
+            loss_value = loss_layer(**inputs_dict)
             weighted_loss = loss_value * weight
 
             # add loss
@@ -269,14 +265,7 @@ class RegistrationModel(tf.keras.Model):
             tre = compute_centroid_distance(
                 y_true=fixed_label, y_pred=pred_fixed_label, grid=self.grid_ref
             )
-            dice_binary = (
-                DiceScore(binary=True)(y_true=fixed_label, y_pred=pred_fixed_label)
-                / self.global_batch_size
-            )
             self._model.add_metric(tre, name="metric/TRE", aggregation="mean")
-            self._model.add_metric(
-                dice_binary, name="metric/BinaryDiceScore", aggregation="mean"
-            )
 
     def call(
         self, inputs: Dict[str, tf.Tensor], training=None, mask=None

@@ -28,7 +28,7 @@ class TestMultiScaleLoss:
         expected = dict(
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.SUM,
+            reduction=tf.keras.losses.Reduction.NONE,
             name="MultiScaleLoss",
         )
         assert got == expected
@@ -128,10 +128,23 @@ class TestDiceScore:
             smooth_dr=1e-5,
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.SUM,
+            reduction=tf.keras.losses.Reduction.NONE,
             name="DiceScore",
         )
         assert got == expected
+
+    @pytest.mark.parametrize("background_weight", [-0.1, 1.1])
+    def test_background_weight_err(self, background_weight: float):
+        """
+        Test the error message when using wrong background weight.
+
+        :param background_weight: weight for background class.
+        """
+        with pytest.raises(ValueError) as err_info:
+            label.DiceScore(background_weight=background_weight)
+        assert "The background weight for Dice Score must be within [0, 1]" in str(
+            err_info.value
+        )
 
 
 class TestCrossEntropy:
@@ -205,10 +218,23 @@ class TestCrossEntropy:
             smooth=1e-5,
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.SUM,
+            reduction=tf.keras.losses.Reduction.NONE,
             name="CrossEntropy",
         )
         assert got == expected
+
+    @pytest.mark.parametrize("background_weight", [-0.1, 1.1])
+    def test_background_weight_err(self, background_weight: float):
+        """
+        Test the error message when using wrong background weight.
+
+        :param background_weight: weight for background class.
+        """
+        with pytest.raises(ValueError) as err_info:
+            label.CrossEntropy(background_weight=background_weight)
+        assert "The background weight for Cross Entropy must be within [0, 1]" in str(
+            err_info.value
+        )
 
 
 class TestJaccardIndex:
@@ -305,7 +331,7 @@ class TestJaccardIndex:
             smooth_dr=1e-5,
             scales=None,
             kernel="gaussian",
-            reduction=tf.keras.losses.Reduction.SUM,
+            reduction=tf.keras.losses.Reduction.NONE,
             name="JaccardIndex",
         )
         assert got == expected
