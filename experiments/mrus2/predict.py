@@ -6,11 +6,10 @@ from deepreg.predict import predict
 predict(
     gpu="0",
     gpu_allow_growth=False,
-    ckpt_path="logs/logs_train/20210116-193157/save/ckpt-1000",
+    ckpt_path="pt6/20210403-004611/20210403-004611/save/ckpt-3000",
     mode="test",
     batch_size=1,
-    log_root="",
-    log_dir="logs/",
-    sample_label="all",
+    log_dir="",
+    exp_name="",
     config_path="fold00.yaml",
 )

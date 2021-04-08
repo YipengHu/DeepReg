@@ -1,21 +1,21 @@
 dataset:
   dir:
     train:
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold01"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold02"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold03"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold04"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold05"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold06"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold07"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold08"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold09"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold10"
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold11"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold01"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold02"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold03"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold04"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold05"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold06"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold07"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold08"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold09"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold10"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold11"
     valid:
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold00"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold00"
     test:
-      - "/home/yipeng/Scratch/data/mrusv2/normalised/deepreg/fold00"
+      - "~/Scratch/data/mrusv2/normalised/deepreg/fold00"
   format: "h5"
   type: "paired"
   labeled: true
